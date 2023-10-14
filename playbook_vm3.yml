@@ -7,7 +7,7 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install dependencies
+    - name: Устанока зависимостей
       ansible.builtin.package:
         name:
           - apt-transport-https
@@ -21,13 +21,13 @@
       tags:
         - docker
 
-    - name: Add Docker GPG key
+    - name: Добавление Docker GPG key
       ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
       tags:
         - docker
 
-    - name: Add Docker repository
+    - name: Добавление Docker репозитария
       ansible.builtin.apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
       tags:
@@ -37,35 +37,22 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install Docker
+    - name: Установка Docker
       ansible.builtin.package:
         name: docker-ce
         state: present
       tags:
         - docker
 
-    - name: Start Docker Service
+    - name: Старт Docker сервиса
       ansible.builtin.service:
         name: docker
         state: started
       tags:
         - docker
 
-    - name: Копировать папку с файлами
-      copy:
-        src: /home/ruslan/home_work/sql
-        dest: /home
-      become: true
 
-
-    - name: Копировать папку 2
-      copy:
-        src: /home/ruslan/home_work/docker
-        dest: /home
-      become: true
-
-
-    - name: Copy docker to VM
+    - name: Копия Dockerfile на VM3
       ansible.builtin.copy:
         src: /home/ruslan/home_work/Dockerfile
         dest: /home
@@ -82,18 +69,9 @@
         source: build
 
 
-
-
-    - name: Run Zabbix Docker Container
-      ansible.builtin.docker_container:
-        name: zabbix_container
-        image: zbx_vagrant # Используем собранный образ
-        ports:
-          - "80:80"  # Проброс порта 80 из контейнера на порт 80 ВМ3
-      tags:
-        - zabbix
-
-    - name: Forward Port 8082 to VM2 Port 8081
-      ansible.builtin.command: iptables -t nat -A PREROUTING -p tcp --dport 8082 -j DNAT --to-destination 192.168.56.20:8081
-      tags:
-        - port_forwarding
+- name: Запуск докера
+  hosts: VM3
+  become: yes
+  tasks:
+    - name: Запуск
+      shell: docker run --name zabbix-v -p 80:80 -p 10051:10051 -p 3306:3306 zbx_vagrant
