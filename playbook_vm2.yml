@@ -1,10 +1,10 @@
 ---
-- name: 'Старт'
+- name: 'Install python3'
   hosts: VM2
   become: true
   gather_facts: false
 
-- name: 'Playbook конфигурации IPA клиента'
+- name: 'Playbook to configure IPA client'
   hosts: VM2
   become: true
   collections:
@@ -15,7 +15,7 @@
     ipaadmin_principal: 'admin'
     ipaserver_domain: 'test.local'
     ipaserver_realm: 'TEST.LOCAL'
-    ipaadmin_password: 'freeipass'
+    ipaadmin_password: 'freeipass'  # Поменяйте на строку в одинарных кавычках
     ipaclient_configure_dns_resolver: yes
     ipaclient_dns_servers: '192.168.56.10'
 
@@ -24,7 +24,7 @@
       state: 'present'
 
   tasks:
-    - name: 'Установка Epel'
+    - name: 'Install Epel'
       yum:
        name: epel-release
        state: present
@@ -35,12 +35,12 @@
         state: present
 
 
-    - name: 'Установка Puppet
+    - name: 'Install Puppet repository'
       yum:
         name: https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm
         state: present
 
-    - name: 'Установка Foreman'
+    - name: 'Установка репозитория Foreman (замените на ваш репозиторий, если нужно)'
       yum:
         name: https://yum.theforeman.org/releases/1.24/el7/x86_64/foreman-release-1.24.0-4.el7.noarch.rpm
         state: present
@@ -56,7 +56,7 @@
         name: foreman-installer
         state: present
 
-    - name: Запуск foreman-installer
+    - name: Запустить foreman-installer
       command: foreman-installer
       args:
         warn: false  # Если нужно игнорировать предупреждения
@@ -64,7 +64,14 @@
 
     - name: Вывести результат
       debug:
-        var: foreman_installer_result.stdout_lines
+        var: foreman_installer_result.stdout_lines # Выводит пароль на подлючение
+
+- name: Настройка правила iptables для NAT
+  hosts: VM2
+  become: yes
+  tasks:
+    - name: Добавить правило PREROUTING для NAT
+      shell: iptables -t nat -A PREROUTING -p tcp --dport 8081 -i eth1 -j DNAT --to-destination 192.168.56.20:80
 
 
 
