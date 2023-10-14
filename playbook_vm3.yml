@@ -1,0 +1,99 @@
+---
+
+- hosts: VM3
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      ansible.builtin.package:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+          - python3-docker
+          - gnupg2
+          - pass
+      tags:
+        - docker
+
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+      tags:
+        - docker
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+      tags:
+        - docker
+
+    - name: Update apt cache (again)
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker
+      ansible.builtin.package:
+        name: docker-ce
+        state: present
+      tags:
+        - docker
+
+    - name: Start Docker Service
+      ansible.builtin.service:
+        name: docker
+        state: started
+      tags:
+        - docker
+
+    - name: Копировать папку с файлами
+      copy:
+        src: /home/ruslan/home_work/sql
+        dest: /home
+      become: true
+
+
+    - name: Копировать папку 2
+      copy:
+        src: /home/ruslan/home_work/docker
+        dest: /home
+      become: true
+
+
+    - name: Copy docker to VM
+      ansible.builtin.copy:
+        src: /home/ruslan/home_work/Dockerfile
+        dest: /home
+
+      tags:
+        - docker
+
+    - name: Построение Docker-образа
+      docker_image:
+        build:
+          path: /home
+          dockerfile: Dockerfile
+        name: zbx_vagrant
+        source: build
+
+
+
+
+    - name: Run Zabbix Docker Container
+      ansible.builtin.docker_container:
+        name: zabbix_container
+        image: zbx_vagrant # Используем собранный образ
+        ports:
+          - "80:80"  # Проброс порта 80 из контейнера на порт 80 ВМ3
+      tags:
+        - zabbix
+
+    - name: Forward Port 8082 to VM2 Port 8081
+      ansible.builtin.command: iptables -t nat -A PREROUTING -p tcp --dport 8082 -j DNAT --to-destination 192.168.56.20:8081
+      tags:
+        - port_forwarding

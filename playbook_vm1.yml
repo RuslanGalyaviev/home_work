@@ -1,0 +1,97 @@
+---
+- name: 'Установка python3'
+  hosts: VM1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: 'Install python3 on rhel like os'
+      raw: 'yum install -y python3 python2-dnf nss'
+
+- name: 'freeipa_initialization'
+  hosts: VM1
+  become: true
+  tasks:
+    - name: install firewalld
+      dnf:
+        name: firewalld
+        state: latest
+
+    - name: 'Remove ipa domain from host line with multiple domain names in /etc/hosts'
+      lineinfile:
+        path: '/etc/hosts'
+        regexp: '^(127\.0\.0\.1.+){{ inventory_hostname }}(\s*.+)$'
+        line: '\1\2'
+        backrefs: true
+
+    - name: 'Remove line describing single association of 127.0.0.1 and ipa domain in /etc/hosts'
+      lineinfile:
+        path: '/etc/hosts'
+        regexp: '^127\.0\.0\.1.+{{ inventory_hostname }}\s*$'
+        state: 'absent'
+
+
+    - name: Check hostname is valid
+      command: hostname -i
+      register: hostname_ip
+
+
+    - name: 'Allow traffic in the default zone for freeipa services'
+      ansible.posix.firewalld:
+        service: '{{ item }}'
+        permanent: true
+        state: 'enabled'
+      with_items:
+        - 'freeipa-ldap'
+        - 'freeipa-ldaps'
+        - 'ntp'
+        - 'dns'
+        - 'http'
+        - 'https'
+
+- name: 'Playbook to configure IPA servers'
+  hosts: VM1
+  become: true
+  collections:
+    - 'freeipa.ansible_freeipa'
+  vars:
+    ipaserver_domain: 'test.local'
+    ipaserver_realm: 'TEST.LOCAL'
+    ipaserver_setup_dns: true
+    ipaserver_auto_forwarders: true
+    ipaserver_idstart: 2000
+    ipaserver_install_packages: true
+    ipaserver_ip_addresses:
+      - '{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}'
+    ipaadmin_password: 'freeipass'  # Поменяйте на строку в одинарных кавычках
+    ipadm_password: 'freeipass'      # Поменяйте на строку в одинарных кавычках
+
+  roles:
+    - role: 'ipaserver'
+      state: 'present'
+
+  tasks:
+    - name: 'Создать пользователя 1'
+      ipauser:
+        ipaadmin_password: 'freeipass'
+        name: 'test1'
+        first: 'test1'
+        last: 'test'
+        initials: 't1'
+        password: 'test1pass'
+        state: present
+
+    - name: 'Создать пользователя 2'
+      ipauser:
+        ipaadmin_password: 'freeipass'
+        name: 'test2'
+        first: 'test2'
+        last: 'test'
+        initials: 't2'
+        password: 'test2pass'
+        state: present
+
+
+
+
+
+
