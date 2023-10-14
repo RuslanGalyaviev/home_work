@@ -96,7 +96,7 @@
   become: yes
   tasks:
     - name: Добавить правило PREROUTING для NAT
-      shell: iptables -t nat -A PREROUTING -p tcp --dport 8080 -i eth1 -j DNAT --to-destination 192.168.56.10:443
+      shell: iptables -t nat -A PREROUTING -p tcp --dport 8080 -i eth1 -j DNAT --to-destination 192.168.56.10:80
 
 
 
