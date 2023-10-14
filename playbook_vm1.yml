@@ -7,6 +7,7 @@
     - name: 'Install python3 on rhel like os'
       raw: 'yum install -y python3 python2-dnf nss'
 
+
 - name: 'freeipa_initialization'
   hosts: VM1
   become: true
@@ -73,25 +74,29 @@
     - name: 'Создать пользователя 1'
       ipauser:
         ipaadmin_password: 'freeipass'
-        name: 'test1'
-        first: 'test1'
-        last: 'test'
-        initials: 't1'
-        password: 'test1pass'
+        name: 'user1'
+        first: 'user1'
+        last: 'user2'
+        initials: 'u1'
+        password: 'user1pass'
         state: present
 
     - name: 'Создать пользователя 2'
       ipauser:
         ipaadmin_password: 'freeipass'
-        name: 'test2'
-        first: 'test2'
-        last: 'test'
-        initials: 't2'
-        password: 'test2pass'
+        name: 'user2'
+        first: 'user2'
+        last: 'user2'
+        initials: 'u2'
+        password: 'user2pass'
         state: present
 
-
-
+- name: Настройка правила iptables для NAT
+  hosts: VM1
+  become: yes
+  tasks:
+    - name: Добавить правило PREROUTING для NAT
+      shell: iptables -t nat -A PREROUTING -p tcp --dport 8080 -i eth1 -j DNAT --to-destination 192.168.56.10:443
 
 
 
