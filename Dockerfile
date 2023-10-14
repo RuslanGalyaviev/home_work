@@ -1,60 +1,30 @@
 FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HOME /root
 
 
-ENV TZ=Europe/Moscow
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update && apt-get install -y wget locales && rm -rf /var/lib/apt/lists/*
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
 
-# Установка необходимых пакетов
-RUN apt-get update && apt-get install -y \
-    apache2 \
-    php \
-    php-mysql \
-    php-gd \
-    php-ldap \
-    php-xml \
-    php-bcmath \
-    php-mbstring \
-    mysql-client \
-    && apt-get clean
-
-# Установка Zabbix Web
-ARG ZBX_VERSION=6.0
-ARG ZBX_SOURCES=https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu20.04_all.deb
-
-RUN apt-get install -y wget && wget ${ZBX_SOURCES} && dpkg -i zabbix-release_6.0-4+ubuntu20.04_all.deb
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-server
+RUN wget -q https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu20.04_all.deb
 
 
-RUN apt-get update && apt-get install -y zabbix-server-mysql zabbix-frontend-php supervisor
+RUN dpkg -i zabbix-release_6.4-1+ubuntu20.04_all.deb
+RUN apt-get update && apt-get -y install zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent mysql-server
 
-COPY docker/init-db.sh /init-db.sh
-COPY sql/schema.sql /usr/share/doc/zabbix-server-mysql/schema.sql
-COPY sql/data.sql /usr/share/doc/zabbix-server-mysql/data.sql
-COPY sql/double.sql /usr/share/doc/zabbix-server-mysql/double.sql
-COPY sql/history_pk_prepare.sql /usr/share/doc/zabbix-server-mysql/history_pk_prepare.sql
-COPY sql/images.sql /usr/share/doc/zabbix-server-mysql/images.sql
-RUN chmod +x /init-db.sh
-RUN /init-db.sh
+RUN echo "log_bin_trust_function_creators = 1" >> /etc/mysql/mysql.conf.d/mysqld.cnf
 
-
-
-# Копирование конфигурационных файлов
-COPY docker/zabbix.conf.php /etc/zabbix/web/
-COPY docker/apache-zabbix.conf /etc/apache2/sites-available/zabbix.conf
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-# Настройка supervisord
-RUN mkdir -p /etc/supervisor/conf.d
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-RUN chown -R www-data:zabbix /etc/zabbix/
-RUN chmod -R 644 /etc/zabbix/
-
-RUN a2enmod alias && a2enmod rewrite && a2ensite zabbix
+RUN service mysql start && \
+    mysql -e "create database zabbix character set utf8 collate utf8_bin;" && \
+    mysql -e "create user 'zabbix'@'localhost' identified by 'zabbix';" && \
+    mysql -e "grant all privileges on zabbix.* to 'zabbix'@'localhost';" && \
+    mysql -e "flush privileges;" && \
+    zcat "/usr/share/zabbix-sql-scripts/mysql/server.sql.gz" | mysql --default-character-set=utf8mb4 -uzabbix -pzabbix zabbix
 
 
+RUN sed -i '/# DBHost=localhost/a DBHost=127.0.0.1' "/etc/zabbix/zabbix_server.conf"
+RUN sed -i '/### Option: DBPassword/a DBPassword=zabbix' "/etc/zabbix/zabbix_server.conf"
 
-# Экспозиция порта 80 для доступа к веб-интерфейсу
-EXPOSE 80
 
-# Запуск Apache в фоновом режиме
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/bin/bash", "-c", "service mysql restart && service zabbix-server restart && service zabbix-agent restart && service apache2 restart && tail -f /dev/null"]
