@@ -85,6 +85,18 @@ VM2:
 ![image](https://github.com/RuslanGalyaviev/home_work/assets/38991333/a199299d-0909-4182-9852-ad7be6b1b8ec)
 
 
+VM3:
+При настройке Zabbix указываем:
+Database host: 127.0.0.1
+Database port: 3306
+Password: zabbix
+По умолчанию логин:Admin, пароль:Zabbix
+
+![image](https://github.com/RuslanGalyaviev/home_work/assets/38991333/ea7b1144-b717-4753-bbab-f99ca6792e99)
+
+
+
+
 ## Примеры
 
 Проверка статуса службы sssd:
@@ -110,4 +122,5 @@ VM2:
 
 VM3:
 
+![image](https://github.com/RuslanGalyaviev/home_work/assets/38991333/62ef4a4e-56c5-4ce7-9e7c-3ac11f73af65)
 
