@@ -75,3 +75,4 @@
   tasks:
     - name: Запуск
       shell: docker run --name zabbix-v -p 80:80 -p 10051:10051 -p 3306:3306 zbx_vagrant
+#      shell: docker run --name zabbix-v -p 80:80 -p 10051:10051 -p 3306:3306  -d zabbix_vagrant #Запуск в detach
